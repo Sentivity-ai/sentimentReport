@@ -1,0 +1,9 @@
+flask>=3.0.0
+gunicorn>=21.2.0
+praw>=7.7.1
+openai>=1.30.0
+vaderSentiment>=3.3.2
+pandas>=2.0.0
+numpy>=1.26.0
+matplotlib>=3.8.0
+scikit-learn>=1.4.0
