@@ -27,6 +27,7 @@ reddit = praw.Reddit(
     client_secret=os.environ["REDDIT_CLIENT_SECRET"],
     user_agent=os.environ.get("REDDIT_USER_AGENT", "sentivityb2c"),
     check_for_async=False,
+    timeout=10
 )
 openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 analyzer = SentimentIntensityAnalyzer()
@@ -61,11 +62,11 @@ def search_reddit(query, limit, sort, time_filter):
 def optimized_collection(target, competitors):
     results = {}
     logger.info(f"Deep diving target: {target}")
-    results[target] = search_reddit(target, limit=250, sort="hot", time_filter="month")
+    results[target] = search_reddit(target, limit=100, sort="hot", time_filter="week")
     for company in competitors:
         logger.info(f"Quick scan competitor: {company}")
         results[company] = search_reddit(
-            company, limit=50, sort="hot", time_filter="month"
+            company, limit=25, sort="hot", time_filter="week"
         )
     return results
 
