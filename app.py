@@ -61,11 +61,11 @@ def search_reddit(query, limit, sort, time_filter):
 def optimized_collection(target, competitors):
     results = {}
     logger.info(f"Deep diving target: {target}")
-    results[target] = search_reddit(target, limit=500, sort="hot", time_filter="month")
+    results[target] = search_reddit(target, limit=250, sort="hot", time_filter="month")
     for company in competitors:
         logger.info(f"Quick scan competitor: {company}")
         results[company] = search_reddit(
-            company, limit=150, sort="hot", time_filter="month"
+            company, limit=50, sort="hot", time_filter="month"
         )
     return results
 
@@ -301,7 +301,7 @@ def sentiment_report(company_path):
         company: trend_stats(group) for company, group in df_ts.groupby("company")
     }
  
-    # 5. Pick examples + enrich with top comments
+    del combined_df, daily_grouped  # Free memory
     exploded_df = daily_grouped.explode(["id", "score", "full_text"]).copy()
     exploded_df = exploded_df.rename(columns={"sentiment_score": "sentiment"})
     exploded_df["score"] = pd.to_numeric(exploded_df["score"], errors="coerce")
