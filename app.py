@@ -238,29 +238,35 @@ def format_examples(examples_dict):
 def generate_report(target, competitors, stats_dict, examples_dict):
     """Generate GPT-4 report."""
     prompt = f"""
-You are a forensic industry analyst. Your goal is to find the "Ground Truth" behind the sentiment spikes.
-
-DATA KEY:
-- [ENG]: High-engagement (Top scores)
-- [POS]: High positive sentiment
-- [NEG]: High negative sentiment
-
-TREND STATS:
-{format_stats(stats_dict, target, competitors)}
-
-REPRESENTATIVE POSTS:
-{format_examples(examples_dict)}
-
-Write EXACTLY this output format. No direct quotes.
-
-INDUSTRY OUTLOOK
-[2-3 short sentences. Identify the specific external event driving the current market momentum.]
-
-TARGET BRAND ANALYSIS: {target}
-• {target} POSITIVE DRIVERS: [Identify the specific event, location, or product feature mentioned.]
-• {target} FRICTION POINTS: [Identify the specific grievance with concrete detail.]
-• KEY SIGNAL: One sentence connecting a specific [NEG] thread to a long-term brand risk.
-"""
+    You are a forensic industry analyst. Your goal is to find the "Ground Truth" behind the sentiment spikes.
+    
+    DATA KEY:
+    - [ENG]: High-engagement (Top scores)
+    - [POS]: High positive sentiment
+    - [NEG]: High negative sentiment
+    - [COMP]: Competitor comparative baseline
+    
+    TREND STATS:
+    {format_stats(stats_dict, target, competitors)}
+    
+    REPRESENTATIVE POSTS:
+    {format_examples(examples_dict)}
+    
+    Write EXACTLY this output format. No direct quotes.
+    
+    INDUSTRY OUTLOOK
+    [2-3 short sentences identifying the SPECIFIC external event, date, and measurable discussion volume impact driving current sentiment spike.]
+    
+    TARGET BRAND ANALYSIS: {target}
+    
+    - {target} POSITIVE DRIVERS: [List specific claims/events/products mentioned in [POS] posts with engagement metrics. Include dates and frequency of appearance if possible.]
+    
+    - {target} FRICTION POINTS: [List specific grievances from [NEG] posts in priority order by engagement volume. Include concrete details, recurring complaint themes, and measurable sentiment intensity.]
+    
+    - COMPETITOR CONTRAST: [Brief note on how {competitors} positioned differently on the SAME issue—what did they do or avoid that Palantir didn't. Include relative sentiment trajectory.]
+    
+    - KEY SIGNAL: One sentence connecting a specific [NEG] thread to a measurable long-term brand risk (talent acquisition, customer churn, regulatory scrutiny, etc.), with correlation strength noted.
+    """
     
     try:
         response = openai_client.chat.completions.create(
