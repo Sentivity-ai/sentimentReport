@@ -12,6 +12,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from flask import Flask, request, jsonify
+from urllib.parse import unquote
 from openai import OpenAI
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -232,24 +233,30 @@ TARGET BRAND ANALYSIS: {target}
     return response.choices[0].message.content.strip()
 
 
-# ── Routes ────────────────────────────────────────────────────────────────────
-@app.route("/<target>/<competitors_str>", methods=["GET"])
-def sentiment_report(target, competitors_str):
+@app.route("/<path:company_path>", methods=["GET"])
+def sentiment_report(company_path):
     """
-    GET /target_company/comp1+comp2+comp3/
+    GET /target_company/competitor1/competitor2/competitor3/
     
-    Example:
-      https://sentimentreport.onrender.com/Apple/Microsoft+Google+Samsung/
+    Handles both URL-encoded spaces (%20) and plus-encoded spaces (+).
+    
+    Examples:
+      https://sentimentreport.onrender.com/Apple/Microsoft/Google/Samsung/
+      https://sentimentreport.onrender.com/Tesla%20Inc/Ford%20Motor/General%20Motors/
+      https://sentimentreport.onrender.com/Tesla Inc/Ford Motor/General Motors/
     """
-    target = (target or "").strip()
-    # Split competitors by '+' and clean each one
-    competitors = [c.strip() for c in competitors_str.split("+") if c.strip()]
- 
-    if not target:
-        return jsonify({"error": "target is required"}), 400
+    # Split by '/' and decode each company name
+    parts = [unquote(p).replace('+', ' ').strip() for p in company_path.split('/') if p.strip()]
+    
+    if len(parts) < 3:
+        return jsonify({"error": "URL format: /target/competitor1/competitor2/... (minimum 3 total)"}), 400
+    
+    target = parts[0]
+    competitors = parts[1:]
+
     if not (2 <= len(competitors) <= 5):
-        return jsonify({"error": "competitors must be a list of 2–5 company names (separated by +)"}), 400
- 
+        return jsonify({"error": f"competitors must be 2–5 companies (you provided {len(competitors)})"}), 400
+
     logger.info(f"Starting report: target={target}, competitors={competitors}")
  
     # 1. Collect data
