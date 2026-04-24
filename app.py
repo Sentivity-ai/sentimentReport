@@ -288,10 +288,10 @@ def sentiment_report(company_path):
     )
  
     daily_filled = impute_missing_days(daily_grouped[["company", "date", "sentiment_score"]])
- 
+
     # 3. Build plot
     plot_b64 = build_plot_base64(daily_filled, target, [target] + competitors)
- 
+
     # 4. Trend stats
     df_ts = daily_filled.copy()
     df_ts["date"] = pd.to_datetime(df_ts["date"])
@@ -301,8 +301,8 @@ def sentiment_report(company_path):
     stats_dict = {
         company: trend_stats(group) for company, group in df_ts.groupby("company")
     }
- 
-    del combined_df, daily_grouped  # Free memory
+
+    # 5. Pick examples + enrich with top comments
     exploded_df = daily_grouped.explode(["id", "score", "full_text"]).copy()
     exploded_df = exploded_df.rename(columns={"sentiment_score": "sentiment"})
     exploded_df["score"] = pd.to_numeric(exploded_df["score"], errors="coerce")
