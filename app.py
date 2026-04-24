@@ -232,23 +232,29 @@ TARGET BRAND ANALYSIS: {target}
     return response.choices[0].message.content.strip()
 
 
-# ── Route ─────────────────────────────────────────────────────────────────────
-@app.route("/sentiment-report", methods=["POST"])
-def sentiment_report():
-    body = request.get_json(force=True)
-    target = (body.get("target") or "").strip()
-    competitors = [c.strip() for c in body.get("competitors", []) if c.strip()]
-
+# ── Routes ────────────────────────────────────────────────────────────────────
+@app.route("/<target>/<competitors_str>", methods=["GET"])
+def sentiment_report(target, competitors_str):
+    """
+    GET /target_company/comp1+comp2+comp3/
+    
+    Example:
+      https://sentimentreport.onrender.com/Apple/Microsoft+Google+Samsung/
+    """
+    target = (target or "").strip()
+    # Split competitors by '+' and clean each one
+    competitors = [c.strip() for c in competitors_str.split("+") if c.strip()]
+ 
     if not target:
         return jsonify({"error": "target is required"}), 400
     if not (2 <= len(competitors) <= 5):
-        return jsonify({"error": "competitors must be a list of 2–5 company names"}), 400
-
+        return jsonify({"error": "competitors must be a list of 2–5 company names (separated by +)"}), 400
+ 
     logger.info(f"Starting report: target={target}, competitors={competitors}")
-
+ 
     # 1. Collect data
     company_dfs = optimized_collection(target, competitors)
-
+ 
     combined_df = pd.concat(
         [
             df.assign(company=company)[["company", "id", "score", "full_text", "created_utc"]]
@@ -257,12 +263,12 @@ def sentiment_report():
         ],
         ignore_index=True,
     )
-
+ 
     if combined_df.empty:
         return jsonify({"error": "No data retrieved from Reddit"}), 502
-
+ 
     combined_df["date"] = pd.to_datetime(combined_df["created_utc"], unit="s").dt.date
-
+ 
     # 2. Daily weighted sentiment
     daily_grouped = (
         combined_df.groupby(["company", "date"])
@@ -272,12 +278,12 @@ def sentiment_report():
     daily_grouped["sentiment_score"] = daily_grouped.apply(
         lambda row: compute_weighted_sentiment(row["full_text"], row["score"]), axis=1
     )
-
+ 
     daily_filled = impute_missing_days(daily_grouped[["company", "date", "sentiment_score"]])
-
+ 
     # 3. Build plot
     plot_b64 = build_plot_base64(daily_filled, target, [target] + competitors)
-
+ 
     # 4. Trend stats
     df_ts = daily_filled.copy()
     df_ts["date"] = pd.to_datetime(df_ts["date"])
@@ -287,17 +293,17 @@ def sentiment_report():
     stats_dict = {
         company: trend_stats(group) for company, group in df_ts.groupby("company")
     }
-
+ 
     # 5. Pick examples + enrich with top comments
     exploded_df = daily_grouped.explode(["id", "score", "full_text"]).copy()
     exploded_df = exploded_df.rename(columns={"sentiment_score": "sentiment"})
     exploded_df["score"] = pd.to_numeric(exploded_df["score"], errors="coerce")
     exploded_df["sentiment"] = pd.to_numeric(exploded_df["sentiment"], errors="coerce")
     exploded_df = exploded_df.dropna(subset=["score", "sentiment"])
-
+ 
     all_companies = [target] + competitors
     examples = {c: pick_examples(c, exploded_df, c == target) for c in all_companies}
-
+ 
     # Batch fetch top comments
     all_ids = [f"t3_{p['id']}" for posts in examples.values() for p in posts]
     if all_ids:
@@ -311,17 +317,17 @@ def sentiment_report():
                     sub.comments.replace_more(limit=0)
                     if sub.comments:
                         post["full_text"] += f" [TOP COMMENT]: {sub.comments[0].body[:200]}"
-
+ 
     # 6. GPT report
     report_text = generate_report(target, competitors, stats_dict, examples)
-
+ 
     # 7. Build daily sentiment table for response
     sentiment_table = (
         daily_filled.groupby("company")
         .apply(lambda g: g.set_index("date")["sentiment_score"].to_dict())
         .to_dict()
     )
-
+ 
     return jsonify(
         {
             "target": target,
@@ -335,13 +341,13 @@ def sentiment_report():
             "chart_png_base64": plot_b64,
         }
     )
-
-
+ 
+ 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})
-
-
+ 
+ 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
