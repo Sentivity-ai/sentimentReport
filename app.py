@@ -62,11 +62,11 @@ def search_reddit(query, limit, sort, time_filter):
 def optimized_collection(target, competitors):
     results = {}
     logger.info(f"Deep diving target: {target}")
-    results[target] = search_reddit(target, limit=100, sort="hot", time_filter="week")
+    results[target] = search_reddit(target, limit=250, sort="hot", time_filter="week")
     for company in competitors:
         logger.info(f"Quick scan competitor: {company}")
         results[company] = search_reddit(
-            company, limit=25, sort="hot", time_filter="week"
+            company, limit=50, sort="hot", time_filter="week"
         )
     return results
 
