@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from scipy.ndimage import gaussian_filter1d
 from flask import Flask, request, jsonify
 from openai import OpenAI
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -64,11 +65,11 @@ def optimized_collection(target, competitors):
     """Collect data: deep dive on target, quick scan on competitors."""
     results = {}
     logger.info(f"Deep diving target: {target}")
-    results[target] = search_reddit(target, limit=250, sort="hot", time_filter="month")
+    results[target] = search_reddit(target, limit=250, sort="hot", time_filter="week")
     
     for company in competitors:
         logger.info(f"Quick scan competitor: {company}")
-        results[company] = search_reddit(company, limit=50, sort="hot", time_filter="month")
+        results[company] = search_reddit(company, limit=50, sort="hot", time_filter="week")
     
     return results
 
@@ -167,13 +168,18 @@ def build_plot_base64(df_plot, target, all_companies):
     df_plot = df_plot.sort_values(["company", "date"])
     
     df_plot["smoothed_sentiment"] = df_plot.groupby("company")["sentiment_score"].transform(
-        lambda x: x.rolling(window=7, min_periods=1).mean()
+        lambda x: gaussian_filter1d(x.values.astype(float), sigma=3)
     )
+
+    plt.rcParams["font.family"] = "sans-serif"
+    plt.rcParams["font.sans-serif"] = ["Nunito", "Rounded Mplus 1c", "Varela Round", "DejaVu Sans"]
+    plt.rcParams["axes.titlesize"] = 15
+    plt.rcParams["axes.labelsize"] = 12
 
     fig, ax = plt.subplots(figsize=(12, 6))
     for company, group in df_plot.groupby("company"):
         lw = 2.5 if company == target else 1.5
-        ax.plot(group["date"], group["smoothed_sentiment"], label=company, linewidth=lw)
+        ax.plot(group["date"], group["smoothed_sentiment"], label=company, linewidth=lw, solid_capstyle="round", solid_joinstyle="round")
 
     ax.set_xlabel("Date")
     ax.set_ylabel("Smoothed Sentiment Score (-1 to +1)")
